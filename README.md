@@ -2,7 +2,7 @@
 
 WordPress記事の初回公開時に、Xへ自動投稿するための専用プラグインです。
 
-## バージョン1.0.1
+## バージョン1.0.2
 
 - 下書き・予約投稿から公開へ変わったタイミングを検知
 - 記事タイトルとパーマリンクを取得
@@ -26,7 +26,7 @@ WordPress記事の初回公開時に、Xへ自動投稿するための専用プ�
 メインのプラグインファイルには、Git Updaterが読み取る次の必須ヘッダーを設定しています。
 
 ```text
-GitHub Plugin URI: healingyasu/x-ai-assistant
+GitHub Plugin URI: https://github.com/healingyasu/x-ai-assistant
 Primary Branch: main
 Release Asset: true
 ```

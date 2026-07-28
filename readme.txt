@@ -4,7 +4,7 @@ Tags: x, twitter, social-media, automation
 Requires at least: 6.2
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -36,6 +36,9 @@ X APIのアカウントと利用プランでは、`POST /2/tweets`が許可さ�
 認証情報を安全に保存するため、サーバーにはSodiumまたはOpenSSLが必要です。
 
 == 変更履歴 ==
+
+= 1.0.2 =
+* Git Updaterの公式仕様に合わせ、GitHub Plugin URIを完全なURLへ修正しました。
 
 = 1.0.1 =
 * 管理画面、通知、説明文を日本語表記へ統一しました。
