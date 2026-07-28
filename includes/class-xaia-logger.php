@@ -39,7 +39,7 @@ final class XAIA_Logger {
 				'x_post_id' => sanitize_text_field( $x_post_id ),
 				'status'    => sanitize_key( $status ),
 				'message'   => wp_strip_all_tags( $message ),
-				'created_at'=> current_time( 'mysql', true ),
+				'created_at' => current_time( 'mysql', true ),
 			),
 			array( '%d', '%s', '%s', '%s', '%s' )
 		);

@@ -35,6 +35,7 @@ final class XAIA_Admin {
 		$text     = strtr(
 			$settings['template'],
 			array(
+				/* translators: %s: WordPress site name. */
 				'{title}' => sprintf( __( 'X AI Assistant test from %s', 'x-ai-assistant' ), get_bloginfo( 'name' ) ),
 				'{url}'   => home_url( '/' ),
 			)
@@ -48,7 +49,15 @@ final class XAIA_Admin {
 			$notice = 'success';
 		}
 
-		wp_safe_redirect( add_query_arg( 'xaia_notice', $notice, admin_url( 'options-general.php?page=x-ai-assistant' ) ) );
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'xaia_notice'       => $notice,
+					'xaia_notice_nonce' => wp_create_nonce( 'xaia_test_notice' ),
+				),
+				admin_url( 'options-general.php?page=x-ai-assistant' )
+			)
+		);
 		exit;
 	}
 
@@ -91,8 +100,12 @@ final class XAIA_Admin {
 
 			<h2><?php esc_html_e( 'Recent logs', 'x-ai-assistant' ); ?></h2>
 			<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Date (UTC)', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( 'Post', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( 'Status', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( 'X Post ID', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( 'Message', 'x-ai-assistant' ); ?></th></tr></thead><tbody>
-			<?php if ( empty( $logs ) ) : ?><tr><td colspan="5"><?php esc_html_e( 'No logs yet.', 'x-ai-assistant' ); ?></td></tr><?php endif; ?>
-			<?php foreach ( $logs as $log ) : ?><tr><td><?php echo esc_html( $log->created_at ); ?></td><td><?php echo $log->post_id ? '<a href="' . esc_url( get_edit_post_link( $log->post_id ) ) . '">#' . esc_html( $log->post_id ) . '</a>' : esc_html__( 'Test', 'x-ai-assistant' ); ?></td><td><?php echo esc_html( $log->status ); ?></td><td><?php echo esc_html( $log->x_post_id ); ?></td><td><?php echo esc_html( $log->message ); ?></td></tr><?php endforeach; ?>
+			<?php if ( empty( $logs ) ) : ?>
+				<tr><td colspan="5"><?php esc_html_e( 'No logs yet.', 'x-ai-assistant' ); ?></td></tr>
+			<?php endif; ?>
+			<?php foreach ( $logs as $log ) : ?>
+				<tr><td><?php echo esc_html( $log->created_at ); ?></td><td><?php echo $log->post_id ? '<a href="' . esc_url( get_edit_post_link( $log->post_id ) ) . '">#' . esc_html( $log->post_id ) . '</a>' : esc_html__( 'Test', 'x-ai-assistant' ); ?></td><td><?php echo esc_html( $log->status ); ?></td><td><?php echo esc_html( $log->x_post_id ); ?></td><td><?php echo esc_html( $log->message ); ?></td></tr>
+			<?php endforeach; ?>
 			</tbody></table>
 		</div>
 		<?php
@@ -108,7 +121,11 @@ final class XAIA_Admin {
 	}
 
 	private function render_notice() {
-		if ( empty( $_GET['xaia_notice'] ) ) {
+		if ( empty( $_GET['xaia_notice'] ) || empty( $_GET['xaia_notice_nonce'] ) ) {
+			return;
+		}
+		$notice_nonce = sanitize_text_field( wp_unslash( $_GET['xaia_notice_nonce'] ) );
+		if ( ! wp_verify_nonce( $notice_nonce, 'xaia_test_notice' ) ) {
 			return;
 		}
 		$success = 'success' === sanitize_key( wp_unslash( $_GET['xaia_notice'] ) );

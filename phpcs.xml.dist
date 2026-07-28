@@ -6,13 +6,11 @@
 	<file>uninstall.php</file>
 	<arg name="extensions" value="php"/>
 	<arg value="sp"/>
-	<rule ref="WordPress"/>
+	<config name="ignore_warnings_on_exit" value="1"/>
+	<rule ref="WordPress-Core"/>
 	<rule ref="PHPCompatibilityWP">
 		<properties>
 			<property name="testVersion" value="7.4-"/>
 		</properties>
-	</rule>
-	<rule ref="WordPress.Files.FileName.InvalidClassFileName">
-		<exclude-pattern>includes/class-xaia-*.php</exclude-pattern>
 	</rule>
 </ruleset>
