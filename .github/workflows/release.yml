@@ -1,0 +1,24 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build plugin ZIP
+        run: |
+          mkdir -p build/x-ai-assistant
+          rsync -rc --exclude-from=.distignore ./ build/x-ai-assistant/
+          cd build
+          zip -r x-ai-assistant.zip x-ai-assistant
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: build/x-ai-assistant.zip
