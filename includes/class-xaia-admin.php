@@ -78,16 +78,18 @@ final class XAIA_Admin {
 			<?php if ( ! XAIA_Credentials::encryption_available() ) : ?>
 				<div class="notice notice-error"><p><?php esc_html_e( 'X APIの認証情報を安全に保存するには、SodiumまたはOpenSSLが必要です。', 'x-ai-assistant' ); ?></p></div>
 			<?php endif; ?>
-			<p><?php esc_html_e( '投稿送信以外の外部APIを使わず、WordPress内で投稿文・ハッシュタグ・予約日時を管理します。', 'x-ai-assistant' ); ?></p>
-			<h2><?php esc_html_e( '月間API利用枠', 'x-ai-assistant' ); ?></h2>
+			<p><?php esc_html_e( 'X API以外の外部APIを使わず、WordPress内で投稿文・交流候補・通知・予約日時を管理します。', 'x-ai-assistant' ); ?></p>
+			<h2><?php esc_html_e( '月間API予算', 'x-ai-assistant' ); ?></h2>
 			<div class="notice notice-info inline">
 				<p>
 					<?php
-					/* translators: 1: 対象月、2: 使用回数、3: 上限回数、4: 残り回数。 */
-					echo esc_html( sprintf( __( '%1$s：%2$d／%3$d回使用、残り%4$d回です。', 'x-ai-assistant' ), $budget['month'], $budget['used'], $budget['limit'], $budget['remaining'] ) );
+					/* translators: 1: 対象月、2: 使用額、3: 上限額、4: 残額。 */
+					echo esc_html( sprintf( __( '%1$s：%2$s／%3$s米ドル相当を使用、残り%4$s米ドル相当です。', 'x-ai-assistant' ), $budget['month'], XAIA_Budget::dollars( $budget['spent_milliusd'] ), XAIA_Budget::dollars( $budget['limit_milliusd'] ), XAIA_Budget::dollars( $budget['remaining_milliusd'] ) ) );
 					?>
 				</p>
-				<p><?php esc_html_e( 'テスト投稿を含む送信試行を月20回までに制限し、上限後はX APIへ通信する前に停止します。現在のURL付き投稿料金では最大約4米ドルの目安です。料金変更に備え、X Developer Console側も利用上限5米ドル・自動チャージOFFを推奨します。', 'x-ai-assistant' ); ?></p>
+				<p><?php esc_html_e( '記事投稿4.00、候補取得0.25、メンション0.10、返信・いいね・フォロー0.13、本人確認0.02米ドル相当の枠に分け、合計4.50米ドル相当までに制限します。上限後はX APIへ通信する前に停止します。', 'x-ai-assistant' ); ?></p>
+				<p><?php esc_html_e( 'X Developer Console側も利用上限5米ドル・自動チャージOFFを推奨します。', 'x-ai-assistant' ); ?></p>
+				<p><a href="<?php echo esc_url( admin_url( 'options-general.php?page=x-ai-assistant-interaction' ) ); ?>"><?php esc_html_e( 'X交流支援を開く', 'x-ai-assistant' ); ?></a></p>
 			</div>
 			<div class="notice notice-info inline">
 				<p>
@@ -100,6 +102,9 @@ final class XAIA_Admin {
 				<?php settings_fields( 'xaia_settings_group' ); ?>
 				<table class="form-table" role="presentation">
 					<tr><th scope="row"><?php esc_html_e( '自動投稿', 'x-ai-assistant' ); ?></th><td><label><input type="checkbox" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[enabled]" value="1" <?php checked( $settings['enabled'], '1' ); ?>> <?php esc_html_e( '記事の初回公開時に自動投稿する', 'x-ai-assistant' ); ?></label></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'X交流支援', 'x-ai-assistant' ); ?></th><td><label><input type="checkbox" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[interaction_enabled]" value="1" <?php checked( $settings['interaction_enabled'], '1' ); ?>> <?php esc_html_e( '週1回の交流候補取得と1時間ごとのメンション確認を有効にする', 'x-ai-assistant' ); ?></label></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'メール通知', 'x-ai-assistant' ); ?></th><td><label><input type="checkbox" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[email_notifications]" value="1" <?php checked( $settings['email_notifications'], '1' ); ?>> <?php esc_html_e( '新しいメンションがある場合だけメールで通知する', 'x-ai-assistant' ); ?></label></td></tr>
+					<tr><th scope="row"><label for="xaia-notification-email"><?php esc_html_e( '通知先メールアドレス', 'x-ai-assistant' ); ?></label></th><td><input class="regular-text" type="email" id="xaia-notification-email" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[notification_email]" value="<?php echo esc_attr( $settings['notification_email'] ); ?>"></td></tr>
 					<?php foreach ( $this->credential_labels() as $key => $label ) : ?>
 					<tr>
 						<th scope="row"><label for="xaia-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
@@ -112,11 +117,11 @@ final class XAIA_Admin {
 			</form>
 
 			<h2><?php esc_html_e( 'テスト投稿', 'x-ai-assistant' ); ?></h2>
-			<p><?php esc_html_e( '保存済みのテンプレートと認証情報を使い、Xへ実際に投稿します。月間API利用枠を1回消費します。', 'x-ai-assistant' ); ?></p>
+			<p><?php esc_html_e( '保存済みのテンプレートと認証情報を使い、Xへ実際に投稿します。現在の料金では月間API予算を0.20米ドル相当消費します。', 'x-ai-assistant' ); ?></p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="xaia_test_post">
 				<?php wp_nonce_field( 'xaia_test_post' ); ?>
-				<?php submit_button( __( 'テスト投稿を送信', 'x-ai-assistant' ), 'secondary', 'submit', false, array( 'onclick' => "return confirm('" . esc_js( __( 'Xへ実際にテスト投稿しますか？ 月間API利用枠を1回消費します。', 'x-ai-assistant' ) ) . "');" ) ); ?>
+				<?php submit_button( __( 'テスト投稿を送信', 'x-ai-assistant' ), 'secondary', 'submit', false, array( 'onclick' => "return confirm('" . esc_js( __( 'Xへ実際にテスト投稿しますか？ 月間API予算を0.20米ドル相当消費します。', 'x-ai-assistant' ) ) . "');" ) ); ?>
 			</form>
 
 			<h2><?php esc_html_e( '最近の投稿ログ', 'x-ai-assistant' ); ?></h2>
@@ -142,11 +147,14 @@ final class XAIA_Admin {
 	}
 
 	private function status_label( $status ) {
-		if ( 'success' === $status ) {
+		if ( in_array( $status, array( 'success', 'interaction_success' ), true ) ) {
 			return __( '成功', 'x-ai-assistant' );
 		}
 		if ( 'scheduled' === $status ) {
 			return __( '予約済み', 'x-ai-assistant' );
+		}
+		if ( 'info' === $status ) {
+			return __( '情報', 'x-ai-assistant' );
 		}
 
 		return __( 'エラー', 'x-ai-assistant' );

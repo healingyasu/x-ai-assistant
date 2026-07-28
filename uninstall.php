@@ -19,7 +19,13 @@ delete_option( 'xaia_settings' );
 delete_option( 'xaia_version' );
 delete_option( 'xaia_monthly_usage' );
 delete_option( 'xaia_budget_lock' );
+delete_option( 'xaia_interaction_state' );
+delete_option( 'xaia_mentions' );
+delete_option( 'xaia_candidates' );
+delete_option( 'xaia_x_authenticated_user' );
 wp_clear_scheduled_hook( 'xaia_scheduled_publish' );
+wp_clear_scheduled_hook( 'xaia_check_mentions' );
+wp_clear_scheduled_hook( 'xaia_fetch_candidates' );
 $wpdb->query( 'DROP TABLE IF EXISTS ' . $wpdb->prefix . 'xaia_logs' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.NotPrepared
 $wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_xaia_x_post_id' ), array( '%s' ) );
 $wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_xaia_posted_at' ), array( '%s' ) );

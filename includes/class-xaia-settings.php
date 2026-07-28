@@ -10,6 +10,9 @@ final class XAIA_Settings {
 	public static function defaults() {
 		return array(
 			'enabled'             => '1',
+			'interaction_enabled' => '1',
+			'email_notifications' => '1',
+			'notification_email'  => sanitize_email( get_option( 'admin_email', '' ) ),
 			'api_key'             => '',
 			'api_secret'          => '',
 			'access_token'        => '',
@@ -68,17 +71,25 @@ final class XAIA_Settings {
 		$input   = is_array( $input ) ? $input : array();
 		$current = self::get_all( false );
 		$output  = array(
-			'enabled'  => empty( $input['enabled'] ) ? '0' : '1',
-			'template' => isset( $input['template'] ) ? sanitize_textarea_field( $input['template'] ) : self::defaults()['template'],
+			'enabled'             => empty( $input['enabled'] ) ? '0' : '1',
+			'interaction_enabled' => empty( $input['interaction_enabled'] ) ? '0' : '1',
+			'email_notifications' => empty( $input['email_notifications'] ) ? '0' : '1',
+			'notification_email'  => isset( $input['notification_email'] ) ? sanitize_email( wp_unslash( $input['notification_email'] ) ) : self::defaults()['notification_email'],
+			'template'            => isset( $input['template'] ) ? sanitize_textarea_field( $input['template'] ) : self::defaults()['template'],
 		);
 
 		if ( '' === trim( $output['template'] ) ) {
 			$output['template'] = self::defaults()['template'];
 		}
 
+		$credentials_changed = false;
 		foreach ( self::secret_keys() as $key ) {
 			$value = isset( $input[ $key ] ) ? trim( wp_unslash( $input[ $key ] ) ) : '';
+			$credentials_changed = $credentials_changed || '' !== $value;
 			$output[ $key ] = '' !== $value ? XAIA_Credentials::encrypt( $value ) : ( $current[ $key ] ?? '' );
+		}
+		if ( $credentials_changed ) {
+			delete_option( XAIA_Interaction::USER_OPTION );
 		}
 
 		return $output;

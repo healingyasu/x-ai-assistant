@@ -5,50 +5,87 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class XAIA_Budget {
-	const OPTION_NAME          = 'xaia_monthly_usage';
-	const LOCK_OPTION          = 'xaia_budget_lock';
-	const MAX_MONTHLY_REQUESTS = 20;
+	const OPTION_NAME       = 'xaia_monthly_usage';
+	const LOCK_OPTION       = 'xaia_budget_lock';
+	const MAX_MILLIUSD      = 4500;
+	const URL_POST_COST     = 200;
+	const TEXT_POST_COST    = 15;
+	const INTERACTION_COST  = 15;
+	const POST_READ_COST    = 5;
+	const USER_READ_COST    = 10;
+	const OWNED_READ_COST   = 1;
+	const CATEGORY_LIMITS   = array(
+		'posts'        => 4000,
+		'candidates'   => 250,
+		'mentions'     => 100,
+		'interactions' => 130,
+		'identity'     => 20,
+	);
 
 	public static function status() {
 		$month = wp_date( 'Y-m', null, wp_timezone() );
 		$usage = get_option( self::OPTION_NAME, array() );
 
 		if ( ! is_array( $usage ) || empty( $usage['month'] ) || $month !== $usage['month'] ) {
+			$posts = XAIA_Logger::count_successes_since( self::month_start_utc() );
 			$usage = array(
-				'month' => $month,
-				'used'  => XAIA_Logger::count_successes_since( self::month_start_utc() ),
+				'month'          => $month,
+				'spent_milliusd' => $posts * self::URL_POST_COST,
+				'breakdown'      => array( 'posts' => $posts * self::URL_POST_COST ),
+			);
+			update_option( self::OPTION_NAME, $usage, false );
+		} elseif ( ! isset( $usage['spent_milliusd'] ) ) {
+			$legacy_used = absint( $usage['used'] ?? 0 );
+			$usage = array(
+				'month'          => $month,
+				'spent_milliusd' => $legacy_used * self::URL_POST_COST,
+				'breakdown'      => array( 'posts' => $legacy_used * self::URL_POST_COST ),
 			);
 			update_option( self::OPTION_NAME, $usage, false );
 		}
 
-		$used = min( self::MAX_MONTHLY_REQUESTS, absint( $usage['used'] ?? 0 ) );
+		$spent     = min( self::MAX_MILLIUSD, absint( $usage['spent_milliusd'] ?? 0 ) );
+		$breakdown = isset( $usage['breakdown'] ) && is_array( $usage['breakdown'] ) ? array_map( 'absint', $usage['breakdown'] ) : array();
 		return array(
-			'month'     => $month,
-			'used'      => $used,
-			'limit'     => self::MAX_MONTHLY_REQUESTS,
-			'remaining' => max( 0, self::MAX_MONTHLY_REQUESTS - $used ),
+			'month'              => $month,
+			'spent_milliusd'     => $spent,
+			'limit_milliusd'     => self::MAX_MILLIUSD,
+			'remaining_milliusd' => max( 0, self::MAX_MILLIUSD - $spent ),
+			'breakdown'          => $breakdown,
 		);
 	}
 
-	public static function reserve_post() {
+	public static function reserve( $milliusd, $category ) {
+		$milliusd = absint( $milliusd );
+		$category = sanitize_key( $category );
+		if ( 0 === $milliusd || '' === $category ) {
+			return new WP_Error( 'xaia_invalid_budget', __( 'API費用の計算に失敗したため、送信を停止しました。', 'x-ai-assistant' ) );
+		}
+
 		$token = wp_generate_uuid4();
 		if ( ! self::acquire_lock( $token ) ) {
-			return new WP_Error( 'xaia_budget_busy', __( '月間利用数の確認処理中です。少し待ってから再実行してください。', 'x-ai-assistant' ) );
+			return new WP_Error( 'xaia_budget_busy', __( '月間API予算の確認処理中です。少し待ってから再実行してください。', 'x-ai-assistant' ) );
 		}
 
 		$status = self::status();
-		if ( $status['used'] >= $status['limit'] ) {
+		if ( $milliusd > $status['remaining_milliusd'] ) {
 			self::release_lock( $token );
-			return new WP_Error( 'xaia_monthly_limit', __( '月間20回のX API投稿上限に達したため、送信を停止しました。翌月に自動で再開します。', 'x-ai-assistant' ) );
+			return new WP_Error( 'xaia_monthly_limit', __( '月間4.50米ドル相当のAPI予算上限に達するため、X APIへの通信を停止しました。翌月に自動で再開します。', 'x-ai-assistant' ) );
+		}
+		$category_spent = absint( $status['breakdown'][ $category ] ?? 0 );
+		if ( isset( self::CATEGORY_LIMITS[ $category ] ) && self::CATEGORY_LIMITS[ $category ] < $category_spent + $milliusd ) {
+			self::release_lock( $token );
+			return new WP_Error( 'xaia_category_limit', __( 'この機能の月間API予算枠に達したため、X APIへの通信を停止しました。翌月に自動で再開します。', 'x-ai-assistant' ) );
 		}
 
-		++$status['used'];
-		$status['remaining'] = max( 0, $status['limit'] - $status['used'] );
+		$status['spent_milliusd'] += $milliusd;
+		$status['breakdown'][ $category ] = $category_spent + $milliusd;
 		$saved = update_option(
 			self::OPTION_NAME,
 			array(
-				'month' => $status['month'],
-				'used'  => $status['used'],
+				'month'          => $status['month'],
+				'spent_milliusd' => $status['spent_milliusd'],
+				'breakdown'      => $status['breakdown'],
 			),
 			false
 		);
@@ -58,6 +95,37 @@ final class XAIA_Budget {
 		}
 
 		return $status;
+	}
+
+	public static function refund( $milliusd, $category ) {
+		$milliusd = absint( $milliusd );
+		$category = sanitize_key( $category );
+		$token    = wp_generate_uuid4();
+		if ( 0 === $milliusd || '' === $category || ! self::acquire_lock( $token ) ) {
+			return false;
+		}
+
+		$status         = self::status();
+		$category_spent = absint( $status['breakdown'][ $category ] ?? 0 );
+		$refund         = min( $milliusd, $category_spent, $status['spent_milliusd'] );
+		$status['spent_milliusd'] -= $refund;
+		$status['breakdown'][ $category ] = $category_spent - $refund;
+		$saved = update_option(
+			self::OPTION_NAME,
+			array(
+				'month'          => $status['month'],
+				'spent_milliusd' => $status['spent_milliusd'],
+				'breakdown'      => $status['breakdown'],
+			),
+			false
+		);
+		self::release_lock( $token );
+
+		return $saved;
+	}
+
+	public static function dollars( $milliusd ) {
+		return number_format_i18n( absint( $milliusd ) / 1000, 2 );
 	}
 
 	private static function acquire_lock( $token ) {

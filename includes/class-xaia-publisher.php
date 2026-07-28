@@ -89,6 +89,7 @@ final class XAIA_Publisher {
 		update_post_meta( $post->ID, self::POSTED_META, $result['id'] );
 		update_post_meta( $post->ID, '_xaia_posted_at', current_time( 'mysql', true ) );
 		XAIA_Logger::add( $post->ID, 'success', __( 'Xへ投稿しました。', 'x-ai-assistant' ), $result['id'] );
+		do_action( 'xaia_post_published_to_x', $post->ID, $result['id'] );
 
 		return $result;
 	}
