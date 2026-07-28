@@ -3,7 +3,7 @@
  * Plugin Name: X AIアシスタント
  * Plugin URI: https://github.com/healingyasu/x-ai-assistant
  * Description: WordPress記事の初回公開時に、テンプレートを適用してXへ自動投稿します。
- * Version: 1.0.2
+ * Version: 1.0.3
  * Author: 上田 恭弘
  * Author URI: https://github.com/healingyasu
  * License: GPL-2.0-or-later
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'XAIA_VERSION', '1.0.2' );
+define( 'XAIA_VERSION', '1.0.3' );
 define( 'XAIA_FILE', __FILE__ );
 define( 'XAIA_DIR', plugin_dir_path( __FILE__ ) );
 

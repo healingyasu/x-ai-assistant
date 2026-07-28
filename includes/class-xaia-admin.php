@@ -75,6 +75,13 @@ final class XAIA_Admin {
 				<div class="notice notice-error"><p><?php esc_html_e( 'X APIの認証情報を安全に保存するには、SodiumまたはOpenSSLが必要です。', 'x-ai-assistant' ); ?></p></div>
 			<?php endif; ?>
 			<p><?php esc_html_e( 'WordPress記事の初回公開時に、テンプレートを適用してXへ自動投稿します。', 'x-ai-assistant' ); ?></p>
+			<div class="notice notice-info inline">
+				<p>
+					<strong><?php esc_html_e( 'X APIの認証情報をお持ちでない場合', 'x-ai-assistant' ); ?></strong><br>
+					<?php esc_html_e( 'X Developer Consoleで、読み取り・書き込み権限を設定し、APIキー、APIシークレット、アクセストークン、アクセストークンシークレットを取得してください。', 'x-ai-assistant' ); ?>
+				</p>
+				<p><a class="button button-secondary" href="https://console.x.com/" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'X Developer ConsoleからAPIキーなどを入手', 'x-ai-assistant' ); ?> <span class="dashicons dashicons-external" aria-hidden="true"></span><span class="screen-reader-text"><?php esc_html_e( '（新しいタブで開きます）', 'x-ai-assistant' ); ?></span></a></p>
+			</div>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'xaia_settings_group' ); ?>
 				<table class="form-table" role="presentation">
