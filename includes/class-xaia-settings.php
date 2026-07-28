@@ -14,8 +14,22 @@ final class XAIA_Settings {
 			'api_secret'          => '',
 			'access_token'        => '',
 			'access_token_secret' => '',
-			'template'            => "{title}\n{url}",
+			'template'            => "{title}\n\n{excerpt}\n\n{url}\n\n{hashtags}",
 		);
+	}
+
+	public static function maybe_upgrade() {
+		$stored_version = (string) get_option( 'xaia_version', '1.0.0' );
+		if ( version_compare( $stored_version, XAIA_VERSION, '>=' ) ) {
+			return;
+		}
+
+		$settings = get_option( self::OPTION_NAME, array() );
+		if ( isset( $settings['template'] ) && "{title}\n{url}" === $settings['template'] ) {
+			$settings['template'] = self::defaults()['template'];
+			update_option( self::OPTION_NAME, $settings );
+		}
+		update_option( 'xaia_version', XAIA_VERSION );
 	}
 
 	public static function get_all( $decrypt = true ) {

@@ -16,8 +16,10 @@ final class XAIA_Plugin {
 	}
 
 	public function boot() {
+		XAIA_Settings::maybe_upgrade();
 		add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
 		( new XAIA_Publisher() )->register();
+		( new XAIA_Post_Editor() )->register();
 
 		if ( is_admin() ) {
 			( new XAIA_Admin() )->register();

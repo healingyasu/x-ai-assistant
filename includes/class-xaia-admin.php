@@ -36,8 +36,11 @@ final class XAIA_Admin {
 			$settings['template'],
 			array(
 				/* translators: %s: WordPressサイト名。 */
-				'{title}' => sprintf( __( '%sからのX AIアシスタント テスト投稿', 'x-ai-assistant' ), get_bloginfo( 'name' ) ),
-				'{url}'   => home_url( '/' ),
+				'{title}'      => sprintf( __( '%sからのX AIアシスタント テスト投稿', 'x-ai-assistant' ), get_bloginfo( 'name' ) ),
+				'{excerpt}'    => __( '外部AI APIを使わず、WordPress内で投稿文を作成しています。', 'x-ai-assistant' ),
+				'{url}'        => home_url( '/' ),
+				'{hashtags}'   => '#テスト',
+				'{categories}' => __( 'テスト', 'x-ai-assistant' ),
 			)
 		);
 		$result = ( new XAIA_X_Client( $settings ) )->create_post( trim( $text ) );
@@ -74,7 +77,7 @@ final class XAIA_Admin {
 			<?php if ( ! XAIA_Credentials::encryption_available() ) : ?>
 				<div class="notice notice-error"><p><?php esc_html_e( 'X APIの認証情報を安全に保存するには、SodiumまたはOpenSSLが必要です。', 'x-ai-assistant' ); ?></p></div>
 			<?php endif; ?>
-			<p><?php esc_html_e( 'WordPress記事の初回公開時に、テンプレートを適用してXへ自動投稿します。', 'x-ai-assistant' ); ?></p>
+			<p><?php esc_html_e( '投稿送信以外の外部APIを使わず、WordPress内で投稿文・ハッシュタグ・予約日時を管理します。', 'x-ai-assistant' ); ?></p>
 			<div class="notice notice-info inline">
 				<p>
 					<strong><?php esc_html_e( 'X APIの認証情報をお持ちでない場合', 'x-ai-assistant' ); ?></strong><br>
@@ -92,7 +95,7 @@ final class XAIA_Admin {
 						<td><input class="regular-text" type="password" autocomplete="new-password" id="xaia-<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[<?php echo esc_attr( $key ); ?>]" value="" placeholder="<?php echo empty( $settings[ $key ] ) ? esc_attr__( '未設定', 'x-ai-assistant' ) : esc_attr__( '設定済み（変更しない場合は空欄）', 'x-ai-assistant' ); ?>"></td>
 					</tr>
 					<?php endforeach; ?>
-					<tr><th scope="row"><label for="xaia-template"><?php esc_html_e( '投稿テンプレート', 'x-ai-assistant' ); ?></label></th><td><textarea class="large-text" rows="5" id="xaia-template" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[template]"><?php echo esc_textarea( $settings['template'] ); ?></textarea><p class="description"><?php esc_html_e( '使用できる置換項目：{title}（記事タイトル）、{url}（記事URL）', 'x-ai-assistant' ); ?></p></td></tr>
+					<tr><th scope="row"><label for="xaia-template"><?php esc_html_e( '投稿テンプレート', 'x-ai-assistant' ); ?></label></th><td><textarea class="large-text" rows="8" id="xaia-template" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[template]"><?php echo esc_textarea( $settings['template'] ); ?></textarea><p class="description"><?php esc_html_e( '使用できる置換項目：{title}（記事タイトル）、{excerpt}（抜粋）、{url}（記事URL）、{hashtags}（タグ・カテゴリーから最大5件）、{categories}（カテゴリー名）', 'x-ai-assistant' ); ?></p></td></tr>
 				</table>
 				<?php submit_button(); ?>
 			</form>
@@ -128,7 +131,14 @@ final class XAIA_Admin {
 	}
 
 	private function status_label( $status ) {
-		return 'success' === $status ? __( '成功', 'x-ai-assistant' ) : __( 'エラー', 'x-ai-assistant' );
+		if ( 'success' === $status ) {
+			return __( '成功', 'x-ai-assistant' );
+		}
+		if ( 'scheduled' === $status ) {
+			return __( '予約済み', 'x-ai-assistant' );
+		}
+
+		return __( 'エラー', 'x-ai-assistant' );
 	}
 
 	private function render_notice() {
