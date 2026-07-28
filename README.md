@@ -1,28 +1,29 @@
-# X AI Assistant
+# X AIアシスタント
 
-A focused WordPress plugin that automatically posts to X when a standard WordPress post is published for the first time.
+WordPress記事の初回公開時に、Xへ自動投稿するための専用プラグインです。
 
-## Version 1.0
+## バージョン1.0.1
 
-- Detects `draft`/`scheduled` → `publish` transitions
-- Reads the post title and permalink
-- Applies a configurable `{title}` / `{url}` template
-- Posts through X API v2 `POST /2/tweets` with OAuth 1.0a user context
-- Saves success and error logs
-- Prevents duplicate and overlapping sends
-- Encrypts credential settings at rest with Sodium or OpenSSL
-- Includes a confirmed, real-post test action
-- Includes Git Updater headers
+- 下書き・予約投稿から公開へ変わったタイミングを検知
+- 記事タイトルとパーマリンクを取得
+- `{title}`（記事タイトル）と`{url}`（記事URL）を使った投稿テンプレート
+- OAuth 1.0aのユーザー認証でX API v2の`POST /2/tweets`へ投稿
+- 成功・エラーの投稿ログを保存
+- 二重投稿と同時実行を防止
+- SodiumまたはOpenSSLで認証情報を暗号化保存
+- 確認画面付きの実投稿テスト
+- Git Updater対応ヘッダーを搭載
+- 管理画面と通知を日本語化
 
-## Install
+## インストール
 
-Download the release ZIP and install it from **Plugins → Add Plugin → Upload Plugin**, or place this directory at `wp-content/plugins/x-ai-assistant`.
+リリースZIPをダウンロードし、WordPress管理画面の「プラグイン → プラグインを追加 → プラグインのアップロード」からインストールします。または、このフォルダを`wp-content/plugins/x-ai-assistant`へ配置してください。
 
-Configure it at **Settings → X AI Assistant**. The X developer App must have write permission and its access token must represent the account that will publish.
+有効化後、「設定 → X AIアシスタント」を開いて認証情報を入力します。X開発者アプリには書き込み権限が必要で、アクセストークンは投稿先のXアカウントに対応している必要があります。
 
 ## Git Updater
 
-The main plugin file declares:
+メインのプラグインファイルには、Git Updaterが読み取る次の必須ヘッダーを設定しています。
 
 ```text
 GitHub Plugin URI: healingyasu/x-ai-assistant
@@ -30,18 +31,19 @@ Primary Branch: main
 Release Asset: true
 ```
 
-Tagged GitHub releases are built as `x-ai-assistant.zip` by GitHub Actions.
+タグをGitHubへ送信すると、GitHub Actionsが`x-ai-assistant.zip`を生成してリリースへ添付します。
 
-## Security
+## セキュリティ
 
-- Credentials are never committed and password fields are never echoed back.
-- Settings changes and tests require `manage_options` plus WordPress nonces.
-- Output is escaped and inputs are sanitized.
-- X requests use WordPress safe HTTP APIs with no redirects.
-- Credentials use encryption derived from the site's `AUTH_KEY` where supported.
+- 認証情報をリポジトリへ保存しません。
+- パスワード入力欄へ保存済みの値を再表示しません。
+- 設定変更とテスト投稿には、管理者権限とWordPressのnonce検証が必要です。
+- 入力値を無害化し、画面出力をエスケープします。
+- Xへの通信にはWordPressの安全なHTTP APIを使い、リダイレクトを許可しません。
+- WordPressの`AUTH_KEY`から生成した鍵で認証情報を暗号化します。
 
-If WordPress salts change, re-enter the credentials. Sodium or OpenSSL is required; credentials are not saved when neither is available.
+WordPressのソルトを変更した場合は、認証情報を再入力してください。SodiumとOpenSSLのどちらも利用できない環境では、認証情報を保存しません。
 
-## Scope
+## 今回の対象外
 
-AI text generation, hashtags, scheduling, search, likes, follows, and interaction support are intentionally deferred to later versions.
+AIによる投稿文生成、ハッシュタグ提案、投稿予約、関連ジャンル検索、フォロー・いいね候補、AI交流支援は、今後のバージョンで追加する予定です。

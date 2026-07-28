@@ -16,12 +16,12 @@ final class XAIA_X_Client {
 	public function create_post( $text ) {
 		$text = trim( (string) $text );
 		if ( '' === $text ) {
-			return new WP_Error( 'xaia_empty_text', __( 'The X post text is empty.', 'x-ai-assistant' ) );
+			return new WP_Error( 'xaia_empty_text', __( 'Xへ投稿する文章が空です。', 'x-ai-assistant' ) );
 		}
 
 		foreach ( XAIA_Settings::secret_keys() as $key ) {
 			if ( empty( $this->credentials[ $key ] ) ) {
-				return new WP_Error( 'xaia_missing_credentials', __( 'X API credentials are incomplete.', 'x-ai-assistant' ) );
+				return new WP_Error( 'xaia_missing_credentials', __( 'X APIの認証情報がすべて入力されていません。', 'x-ai-assistant' ) );
 			}
 		}
 
@@ -56,7 +56,7 @@ final class XAIA_X_Client {
 		$status = wp_remote_retrieve_response_code( $response );
 		$body   = json_decode( wp_remote_retrieve_body( $response ), true );
 		if ( $status < 200 || $status >= 300 || empty( $body['data']['id'] ) ) {
-			$message = $body['detail'] ?? $body['title'] ?? __( 'X API returned an unexpected response.', 'x-ai-assistant' );
+			$message = $body['detail'] ?? $body['title'] ?? __( 'X APIから予期しない応答が返されました。', 'x-ai-assistant' );
 			if ( ! empty( $body['errors'][0]['message'] ) ) {
 				$message = $body['errors'][0]['message'];
 			}

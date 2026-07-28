@@ -1,4 +1,4 @@
-name: Release
+name: リリース作成
 
 on:
   push:
@@ -10,10 +10,11 @@ permissions:
 
 jobs:
   package:
+    name: 配布ZIPの作成
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build plugin ZIP
+      - name: プラグインZIPの作成
         run: |
           mkdir -p build/x-ai-assistant
           rsync -rc --exclude-from=.distignore ./ build/x-ai-assistant/

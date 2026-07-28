@@ -1,6 +1,6 @@
 {
   "name": "healingyasu/x-ai-assistant",
-  "description": "WordPress to X automatic posting plugin",
+  "description": "WordPress記事をXへ自動投稿するプラグイン",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {

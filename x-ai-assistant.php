@@ -1,10 +1,10 @@
 <?php
 /**
- * Plugin Name: X AI Assistant
+ * Plugin Name: X AIアシスタント
  * Plugin URI: https://github.com/healingyasu/x-ai-assistant
- * Description: Publishes a templated X post when a WordPress post is first published.
- * Version: 1.0.0
- * Author: Yasuhiro Ueda
+ * Description: WordPress記事の初回公開時に、テンプレートを適用してXへ自動投稿します。
+ * Version: 1.0.1
+ * Author: 上田 恭弘
  * Author URI: https://github.com/healingyasu
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'XAIA_VERSION', '1.0.0' );
+define( 'XAIA_VERSION', '1.0.1' );
 define( 'XAIA_FILE', __FILE__ );
 define( 'XAIA_DIR', plugin_dir_path( __FILE__ ) );
 

@@ -1,9 +1,9 @@
 <?php
 /**
- * Uninstall handler.
+ * アンインストール処理。
  *
- * Data is retained by default to preserve the posting audit trail.
- * Define XAIA_DELETE_DATA_ON_UNINSTALL as true before uninstalling to remove it.
+ * 投稿履歴を保持するため、初期設定ではデータを削除しません。
+ * 削除する場合は、アンインストール前にXAIA_DELETE_DATA_ON_UNINSTALLをtrueとして定義します。
  */
 
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {

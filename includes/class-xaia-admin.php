@@ -13,7 +13,7 @@ final class XAIA_Admin {
 	}
 
 	public function add_menu() {
-		add_options_page( __( 'X AI Assistant', 'x-ai-assistant' ), __( 'X AI Assistant', 'x-ai-assistant' ), 'manage_options', 'x-ai-assistant', array( $this, 'render_page' ) );
+		add_options_page( __( 'X AIアシスタント', 'x-ai-assistant' ), __( 'X AIアシスタント', 'x-ai-assistant' ), 'manage_options', 'x-ai-assistant', array( $this, 'render_page' ) );
 	}
 
 	public function register_settings() {
@@ -21,13 +21,13 @@ final class XAIA_Admin {
 	}
 
 	public function action_links( $links ) {
-		array_unshift( $links, '<a href="' . esc_url( admin_url( 'options-general.php?page=x-ai-assistant' ) ) . '">' . esc_html__( 'Settings', 'x-ai-assistant' ) . '</a>' );
+		array_unshift( $links, '<a href="' . esc_url( admin_url( 'options-general.php?page=x-ai-assistant' ) ) . '">' . esc_html__( '設定', 'x-ai-assistant' ) . '</a>' );
 		return $links;
 	}
 
 	public function test_post() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You are not allowed to perform this action.', 'x-ai-assistant' ) );
+			wp_die( esc_html__( 'この操作を実行する権限がありません。', 'x-ai-assistant' ) );
 		}
 		check_admin_referer( 'xaia_test_post' );
 
@@ -35,8 +35,8 @@ final class XAIA_Admin {
 		$text     = strtr(
 			$settings['template'],
 			array(
-				/* translators: %s: WordPress site name. */
-				'{title}' => sprintf( __( 'X AI Assistant test from %s', 'x-ai-assistant' ), get_bloginfo( 'name' ) ),
+				/* translators: %s: WordPressサイト名。 */
+				'{title}' => sprintf( __( '%sからのX AIアシスタント テスト投稿', 'x-ai-assistant' ), get_bloginfo( 'name' ) ),
 				'{url}'   => home_url( '/' ),
 			)
 		);
@@ -45,7 +45,7 @@ final class XAIA_Admin {
 			XAIA_Logger::add( 0, 'error', $result->get_error_message() );
 			$notice = 'error';
 		} else {
-			XAIA_Logger::add( 0, 'success', __( 'Test post published to X.', 'x-ai-assistant' ), $result['id'] );
+			XAIA_Logger::add( 0, 'success', __( 'Xへテスト投稿しました。', 'x-ai-assistant' ), $result['id'] );
 			$notice = 'success';
 		}
 
@@ -69,42 +69,42 @@ final class XAIA_Admin {
 		$logs     = XAIA_Logger::latest();
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'X AI Assistant', 'x-ai-assistant' ); ?></h1>
+			<h1><?php esc_html_e( 'X AIアシスタント', 'x-ai-assistant' ); ?></h1>
 			<?php $this->render_notice(); ?>
 			<?php if ( ! XAIA_Credentials::encryption_available() ) : ?>
-				<div class="notice notice-error"><p><?php esc_html_e( 'Sodium or OpenSSL is required to save X API credentials securely.', 'x-ai-assistant' ); ?></p></div>
+				<div class="notice notice-error"><p><?php esc_html_e( 'X APIの認証情報を安全に保存するには、SodiumまたはOpenSSLが必要です。', 'x-ai-assistant' ); ?></p></div>
 			<?php endif; ?>
-			<p><?php esc_html_e( 'Automatically publish a templated X post when a WordPress post is first published.', 'x-ai-assistant' ); ?></p>
+			<p><?php esc_html_e( 'WordPress記事の初回公開時に、テンプレートを適用してXへ自動投稿します。', 'x-ai-assistant' ); ?></p>
 			<form method="post" action="options.php">
 				<?php settings_fields( 'xaia_settings_group' ); ?>
 				<table class="form-table" role="presentation">
-					<tr><th scope="row"><?php esc_html_e( 'Automatic posting', 'x-ai-assistant' ); ?></th><td><label><input type="checkbox" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[enabled]" value="1" <?php checked( $settings['enabled'], '1' ); ?>> <?php esc_html_e( 'Enable when posts are first published', 'x-ai-assistant' ); ?></label></td></tr>
+					<tr><th scope="row"><?php esc_html_e( '自動投稿', 'x-ai-assistant' ); ?></th><td><label><input type="checkbox" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[enabled]" value="1" <?php checked( $settings['enabled'], '1' ); ?>> <?php esc_html_e( '記事の初回公開時に自動投稿する', 'x-ai-assistant' ); ?></label></td></tr>
 					<?php foreach ( $this->credential_labels() as $key => $label ) : ?>
 					<tr>
 						<th scope="row"><label for="xaia-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
-						<td><input class="regular-text" type="password" autocomplete="new-password" id="xaia-<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[<?php echo esc_attr( $key ); ?>]" value="" placeholder="<?php echo empty( $settings[ $key ] ) ? esc_attr__( 'Not configured', 'x-ai-assistant' ) : esc_attr__( 'Configured — leave blank to keep', 'x-ai-assistant' ); ?>"></td>
+						<td><input class="regular-text" type="password" autocomplete="new-password" id="xaia-<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[<?php echo esc_attr( $key ); ?>]" value="" placeholder="<?php echo empty( $settings[ $key ] ) ? esc_attr__( '未設定', 'x-ai-assistant' ) : esc_attr__( '設定済み（変更しない場合は空欄）', 'x-ai-assistant' ); ?>"></td>
 					</tr>
 					<?php endforeach; ?>
-					<tr><th scope="row"><label for="xaia-template"><?php esc_html_e( 'Post template', 'x-ai-assistant' ); ?></label></th><td><textarea class="large-text" rows="5" id="xaia-template" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[template]"><?php echo esc_textarea( $settings['template'] ); ?></textarea><p class="description"><?php esc_html_e( 'Available placeholders: {title}, {url}', 'x-ai-assistant' ); ?></p></td></tr>
+					<tr><th scope="row"><label for="xaia-template"><?php esc_html_e( '投稿テンプレート', 'x-ai-assistant' ); ?></label></th><td><textarea class="large-text" rows="5" id="xaia-template" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[template]"><?php echo esc_textarea( $settings['template'] ); ?></textarea><p class="description"><?php esc_html_e( '使用できる置換項目：{title}（記事タイトル）、{url}（記事URL）', 'x-ai-assistant' ); ?></p></td></tr>
 				</table>
 				<?php submit_button(); ?>
 			</form>
 
-			<h2><?php esc_html_e( 'Test post', 'x-ai-assistant' ); ?></h2>
-			<p><?php esc_html_e( 'This sends a real post to X using the saved template and credentials.', 'x-ai-assistant' ); ?></p>
+			<h2><?php esc_html_e( 'テスト投稿', 'x-ai-assistant' ); ?></h2>
+			<p><?php esc_html_e( '保存済みのテンプレートと認証情報を使い、Xへ実際に投稿します。', 'x-ai-assistant' ); ?></p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="xaia_test_post">
 				<?php wp_nonce_field( 'xaia_test_post' ); ?>
-				<?php submit_button( __( 'Send test post', 'x-ai-assistant' ), 'secondary', 'submit', false, array( 'onclick' => "return confirm('" . esc_js( __( 'Send a real test post to X?', 'x-ai-assistant' ) ) . "');" ) ); ?>
+				<?php submit_button( __( 'テスト投稿を送信', 'x-ai-assistant' ), 'secondary', 'submit', false, array( 'onclick' => "return confirm('" . esc_js( __( 'Xへ実際にテスト投稿しますか？', 'x-ai-assistant' ) ) . "');" ) ); ?>
 			</form>
 
-			<h2><?php esc_html_e( 'Recent logs', 'x-ai-assistant' ); ?></h2>
-			<table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Date (UTC)', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( 'Post', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( 'Status', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( 'X Post ID', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( 'Message', 'x-ai-assistant' ); ?></th></tr></thead><tbody>
+			<h2><?php esc_html_e( '最近の投稿ログ', 'x-ai-assistant' ); ?></h2>
+			<table class="widefat striped"><thead><tr><th><?php esc_html_e( '日時（UTC）', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( '記事', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( '結果', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( 'X投稿ID', 'x-ai-assistant' ); ?></th><th><?php esc_html_e( '内容', 'x-ai-assistant' ); ?></th></tr></thead><tbody>
 			<?php if ( empty( $logs ) ) : ?>
-				<tr><td colspan="5"><?php esc_html_e( 'No logs yet.', 'x-ai-assistant' ); ?></td></tr>
+				<tr><td colspan="5"><?php esc_html_e( '投稿ログはまだありません。', 'x-ai-assistant' ); ?></td></tr>
 			<?php endif; ?>
 			<?php foreach ( $logs as $log ) : ?>
-				<tr><td><?php echo esc_html( $log->created_at ); ?></td><td><?php echo $log->post_id ? '<a href="' . esc_url( get_edit_post_link( $log->post_id ) ) . '">#' . esc_html( $log->post_id ) . '</a>' : esc_html__( 'Test', 'x-ai-assistant' ); ?></td><td><?php echo esc_html( $log->status ); ?></td><td><?php echo esc_html( $log->x_post_id ); ?></td><td><?php echo esc_html( $log->message ); ?></td></tr>
+				<tr><td><?php echo esc_html( $log->created_at ); ?></td><td><?php echo $log->post_id ? '<a href="' . esc_url( get_edit_post_link( $log->post_id ) ) . '">#' . esc_html( $log->post_id ) . '</a>' : esc_html__( 'テスト', 'x-ai-assistant' ); ?></td><td><?php echo esc_html( $this->status_label( $log->status ) ); ?></td><td><?php echo esc_html( $log->x_post_id ); ?></td><td><?php echo esc_html( $log->message ); ?></td></tr>
 			<?php endforeach; ?>
 			</tbody></table>
 		</div>
@@ -113,11 +113,15 @@ final class XAIA_Admin {
 
 	private function credential_labels() {
 		return array(
-			'api_key'             => __( 'API Key', 'x-ai-assistant' ),
-			'api_secret'          => __( 'API Secret', 'x-ai-assistant' ),
-			'access_token'        => __( 'Access Token', 'x-ai-assistant' ),
-			'access_token_secret' => __( 'Access Token Secret', 'x-ai-assistant' ),
+			'api_key'             => __( 'APIキー', 'x-ai-assistant' ),
+			'api_secret'          => __( 'APIシークレット', 'x-ai-assistant' ),
+			'access_token'        => __( 'アクセストークン', 'x-ai-assistant' ),
+			'access_token_secret' => __( 'アクセストークンシークレット', 'x-ai-assistant' ),
 		);
+	}
+
+	private function status_label( $status ) {
+		return 'success' === $status ? __( '成功', 'x-ai-assistant' ) : __( 'エラー', 'x-ai-assistant' );
 	}
 
 	private function render_notice() {
@@ -129,7 +133,7 @@ final class XAIA_Admin {
 			return;
 		}
 		$success = 'success' === sanitize_key( wp_unslash( $_GET['xaia_notice'] ) );
-		$message = $success ? __( 'The test post was published successfully.', 'x-ai-assistant' ) : __( 'The test post failed. Check the latest log for details.', 'x-ai-assistant' );
+		$message = $success ? __( 'テスト投稿に成功しました。', 'x-ai-assistant' ) : __( 'テスト投稿に失敗しました。最近の投稿ログで詳細を確認してください。', 'x-ai-assistant' );
 		echo '<div class="notice notice-' . ( $success ? 'success' : 'error' ) . ' is-dismissible"><p>' . esc_html( $message ) . '</p></div>';
 	}
 }

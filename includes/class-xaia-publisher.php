@@ -27,18 +27,18 @@ final class XAIA_Publisher {
 
 	public function publish_post( WP_Post $post, array $settings = array() ) {
 		if ( get_post_meta( $post->ID, self::POSTED_META, true ) ) {
-			return new WP_Error( 'xaia_already_posted', __( 'This post has already been sent to X.', 'x-ai-assistant' ) );
+			return new WP_Error( 'xaia_already_posted', __( 'この記事はすでにXへ投稿されています。', 'x-ai-assistant' ) );
 		}
 
 		$lock = absint( get_post_meta( $post->ID, self::LOCK_META, true ) );
 		if ( $lock && $lock > time() - 15 * MINUTE_IN_SECONDS ) {
-			return new WP_Error( 'xaia_locked', __( 'An X publish request is already in progress.', 'x-ai-assistant' ) );
+			return new WP_Error( 'xaia_locked', __( 'Xへの投稿処理を実行中です。', 'x-ai-assistant' ) );
 		}
 		if ( $lock ) {
 			delete_post_meta( $post->ID, self::LOCK_META );
 		}
 		if ( ! add_post_meta( $post->ID, self::LOCK_META, time(), true ) ) {
-			return new WP_Error( 'xaia_lock_failed', __( 'Could not acquire the X publish lock.', 'x-ai-assistant' ) );
+			return new WP_Error( 'xaia_lock_failed', __( 'X投稿処理の重複防止ロックを取得できませんでした。', 'x-ai-assistant' ) );
 		}
 
 		$settings = wp_parse_args( $settings, XAIA_Settings::get_all() );
@@ -53,7 +53,7 @@ final class XAIA_Publisher {
 
 		update_post_meta( $post->ID, self::POSTED_META, $result['id'] );
 		update_post_meta( $post->ID, '_xaia_posted_at', current_time( 'mysql', true ) );
-		XAIA_Logger::add( $post->ID, 'success', __( 'Published to X.', 'x-ai-assistant' ), $result['id'] );
+		XAIA_Logger::add( $post->ID, 'success', __( 'Xへ投稿しました。', 'x-ai-assistant' ), $result['id'] );
 
 		return $result;
 	}

@@ -1,4 +1,4 @@
-name: Quality
+name: 品質検査
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
 
 jobs:
   php:
+    name: PHP ${{ matrix.php }} 検査
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -16,11 +17,11 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
-      - name: PHP syntax
+      - name: PHP構文検査
         run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
-      - name: Install quality tools
+      - name: 品質検査ツールのインストール
         if: matrix.php == '8.3'
         run: composer install --no-interaction --prefer-dist
-      - name: Coding standards
+      - name: コーディング規約検査
         if: matrix.php == '8.3'
         run: composer lint
