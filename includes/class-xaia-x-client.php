@@ -25,6 +25,11 @@ final class XAIA_X_Client {
 			}
 		}
 
+		$budget = XAIA_Budget::reserve_post();
+		if ( is_wp_error( $budget ) ) {
+			return $budget;
+		}
+
 		$oauth = array(
 			'oauth_consumer_key'     => $this->credentials['api_key'],
 			'oauth_nonce'            => wp_generate_password( 32, false, false ),

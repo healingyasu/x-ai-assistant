@@ -70,6 +70,7 @@ final class XAIA_Admin {
 		}
 		$settings = XAIA_Settings::get_all( false );
 		$logs     = XAIA_Logger::latest();
+		$budget   = XAIA_Budget::status();
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'X AIアシスタント', 'x-ai-assistant' ); ?></h1>
@@ -78,6 +79,16 @@ final class XAIA_Admin {
 				<div class="notice notice-error"><p><?php esc_html_e( 'X APIの認証情報を安全に保存するには、SodiumまたはOpenSSLが必要です。', 'x-ai-assistant' ); ?></p></div>
 			<?php endif; ?>
 			<p><?php esc_html_e( '投稿送信以外の外部APIを使わず、WordPress内で投稿文・ハッシュタグ・予約日時を管理します。', 'x-ai-assistant' ); ?></p>
+			<h2><?php esc_html_e( '月間API利用枠', 'x-ai-assistant' ); ?></h2>
+			<div class="notice notice-info inline">
+				<p>
+					<?php
+					/* translators: 1: 対象月、2: 使用回数、3: 上限回数、4: 残り回数。 */
+					echo esc_html( sprintf( __( '%1$s：%2$d／%3$d回使用、残り%4$d回です。', 'x-ai-assistant' ), $budget['month'], $budget['used'], $budget['limit'], $budget['remaining'] ) );
+					?>
+				</p>
+				<p><?php esc_html_e( 'テスト投稿を含む送信試行を月20回までに制限し、上限後はX APIへ通信する前に停止します。現在のURL付き投稿料金では最大約4米ドルの目安です。料金変更に備え、X Developer Console側も利用上限5米ドル・自動チャージOFFを推奨します。', 'x-ai-assistant' ); ?></p>
+			</div>
 			<div class="notice notice-info inline">
 				<p>
 					<strong><?php esc_html_e( 'X APIの認証情報をお持ちでない場合', 'x-ai-assistant' ); ?></strong><br>
@@ -101,11 +112,11 @@ final class XAIA_Admin {
 			</form>
 
 			<h2><?php esc_html_e( 'テスト投稿', 'x-ai-assistant' ); ?></h2>
-			<p><?php esc_html_e( '保存済みのテンプレートと認証情報を使い、Xへ実際に投稿します。', 'x-ai-assistant' ); ?></p>
+			<p><?php esc_html_e( '保存済みのテンプレートと認証情報を使い、Xへ実際に投稿します。月間API利用枠を1回消費します。', 'x-ai-assistant' ); ?></p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="xaia_test_post">
 				<?php wp_nonce_field( 'xaia_test_post' ); ?>
-				<?php submit_button( __( 'テスト投稿を送信', 'x-ai-assistant' ), 'secondary', 'submit', false, array( 'onclick' => "return confirm('" . esc_js( __( 'Xへ実際にテスト投稿しますか？', 'x-ai-assistant' ) ) . "');" ) ); ?>
+				<?php submit_button( __( 'テスト投稿を送信', 'x-ai-assistant' ), 'secondary', 'submit', false, array( 'onclick' => "return confirm('" . esc_js( __( 'Xへ実際にテスト投稿しますか？ 月間API利用枠を1回消費します。', 'x-ai-assistant' ) ) . "');" ) ); ?>
 			</form>
 
 			<h2><?php esc_html_e( '最近の投稿ログ', 'x-ai-assistant' ); ?></h2>

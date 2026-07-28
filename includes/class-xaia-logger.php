@@ -50,4 +50,9 @@ final class XAIA_Logger {
 		$limit = min( 100, max( 1, absint( $limit ) ) );
 		return $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . self::table_name() . ' ORDER BY id DESC LIMIT %d', $limit ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
+
+	public static function count_successes_since( $utc_start ) {
+		global $wpdb;
+		return absint( $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::table_name() . ' WHERE status = %s AND created_at >= %s', 'success', $utc_start ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
 }

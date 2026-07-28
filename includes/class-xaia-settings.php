@@ -14,7 +14,7 @@ final class XAIA_Settings {
 			'api_secret'          => '',
 			'access_token'        => '',
 			'access_token_secret' => '',
-			'template'            => "{title}\n\n{excerpt}\n\n{url}\n\n{hashtags}",
+			'template'            => "ブログ更新しました。\nご興味ある方は、読んでみてください。\n\n{title}\n\n{url}\n\n{hashtags}",
 		);
 	}
 
@@ -25,7 +25,12 @@ final class XAIA_Settings {
 		}
 
 		$settings = get_option( self::OPTION_NAME, array() );
-		if ( isset( $settings['template'] ) && "{title}\n{url}" === $settings['template'] ) {
+		$old_defaults = array(
+			"{title}\n{url}",
+			"{title}\n\n{excerpt}\n\n{url}\n\n{hashtags}",
+			"{title}\n\n{url}\n\n{hashtags}",
+		);
+		if ( isset( $settings['template'] ) && in_array( $settings['template'], $old_defaults, true ) ) {
 			$settings['template'] = self::defaults()['template'];
 			update_option( self::OPTION_NAME, $settings );
 		}
