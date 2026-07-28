@@ -85,7 +85,7 @@ final class XAIA_Interaction {
 
 		$week  = wp_date( 'o-W', null, wp_timezone() );
 		$state = $this->state();
-		if ( $week === ( $state['candidate_week'] ?? '' ) || $week === ( $state['candidate_queued_week'] ?? '' ) ) {
+		if ( ( $state['candidate_week'] ?? '' ) === $week || ( $state['candidate_queued_week'] ?? '' ) === $week ) {
 			return;
 		}
 
@@ -127,7 +127,7 @@ final class XAIA_Interaction {
 		$candidates = self::candidates();
 		$added      = 0;
 		foreach ( $result['data'] ?? array() as $item ) {
-			if ( 5 <= $added || empty( $item['id'] ) || $user['id'] === ( $item['author_id'] ?? '' ) ) {
+			if ( 5 <= $added || empty( $item['id'] ) || ( $item['author_id'] ?? '' ) === $user['id'] ) {
 				continue;
 			}
 			$id = sanitize_text_field( $item['id'] );

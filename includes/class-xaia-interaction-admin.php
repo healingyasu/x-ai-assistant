@@ -167,13 +167,17 @@ final class XAIA_Interaction_Admin {
 	}
 
 	private function action_form( $action, $post_id, $label, $confirm ) {
+		$attributes = array();
+		if ( $confirm ) {
+			$attributes['onclick'] = "return confirm('" . esc_js( __( 'Xでこの操作を実行しますか？', 'x-ai-assistant' ) ) . "');";
+		}
 		?>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;margin:2px">
 			<input type="hidden" name="action" value="xaia_interaction_action">
 			<input type="hidden" name="xaia_do" value="<?php echo esc_attr( $action ); ?>">
 			<input type="hidden" name="x_post_id" value="<?php echo esc_attr( $post_id ); ?>">
 			<?php wp_nonce_field( 'xaia_interaction_' . $action . '_' . $post_id ); ?>
-			<button type="submit" class="button"<?php if ( $confirm ) : ?> onclick="return confirm('<?php echo esc_js( __( 'Xでこの操作を実行しますか？', 'x-ai-assistant' ) ); ?>');"<?php endif; ?>><?php echo esc_html( $label ); ?></button>
+			<?php submit_button( $label, 'secondary', 'submit', false, $attributes ); ?>
 		</form>
 		<?php
 	}
