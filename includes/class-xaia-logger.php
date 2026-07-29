@@ -55,4 +55,16 @@ final class XAIA_Logger {
 		global $wpdb;
 		return absint( $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::table_name() . ' WHERE status = %s AND created_at >= %s', 'success', $utc_start ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
+
+	public static function delete_older_than( $days ) {
+		global $wpdb;
+		$days   = max( 30, min( 365, absint( $days ) ) );
+		$cutoff = gmdate( 'Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS );
+		return false !== $wpdb->query( $wpdb->prepare( 'DELETE FROM ' . self::table_name() . ' WHERE created_at < %s', $cutoff ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	public static function clear() {
+		global $wpdb;
+		return false !== $wpdb->query( 'DELETE FROM ' . self::table_name() ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
+	}
 }

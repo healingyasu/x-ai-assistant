@@ -31,50 +31,55 @@ final class XAIA_Interaction {
 			return new WP_Error( 'xaia_interaction_disabled', __( 'X交流支援が無効です。', 'x-ai-assistant' ) );
 		}
 
-		$user = $this->authenticated_user( $settings );
-		if ( is_wp_error( $user ) ) {
-			$this->log_error_once( 'user', $user->get_error_message() );
-			return $user;
-		}
+		return XAIA_Lock::run(
+			'mentions',
+			function () use ( $settings ) {
+				$user = $this->authenticated_user( $settings );
+				if ( is_wp_error( $user ) ) {
+					$this->log_error_once( 'user', $user->get_error_message() );
+					return $user;
+				}
 
-		$state   = $this->state();
-		$initial = empty( $state['mentions_initialized'] );
-		$result  = ( new XAIA_X_Client( $settings ) )->mentions( $user['id'], $state['mentions_since_id'] ?? '' );
-		if ( is_wp_error( $result ) ) {
-			$this->log_error_once( 'mentions', $result->get_error_message() );
-			return $result;
-		}
+				$state   = $this->state();
+				$initial = empty( $state['mentions_initialized'] );
+				$result  = ( new XAIA_X_Client( $settings ) )->mentions( $user['id'], $state['mentions_since_id'] ?? '' );
+				if ( is_wp_error( $result ) ) {
+					$this->log_error_once( 'mentions', $result->get_error_message() );
+					return $result;
+				}
 
-		$mentions = self::mentions();
-		$new      = array();
-		foreach ( $result['data'] ?? array() as $item ) {
-			if ( empty( $item['id'] ) || isset( $mentions[ $item['id'] ] ) ) {
-				continue;
+				$mentions = self::mentions();
+				$new      = array();
+				foreach ( $result['data'] ?? array() as $item ) {
+					if ( empty( $item['id'] ) || isset( $mentions[ $item['id'] ] ) ) {
+						continue;
+					}
+					$id = sanitize_text_field( $item['id'] );
+					$mentions[ $id ] = array(
+						'id'         => $id,
+						'text'       => sanitize_textarea_field( $item['text'] ?? '' ),
+						'author_id'  => sanitize_text_field( $item['author_id'] ?? '' ),
+						'created_at' => sanitize_text_field( $item['created_at'] ?? '' ),
+						'status'     => 'new',
+						'reply_id'   => '',
+					);
+					$new[] = $mentions[ $id ];
+				}
+				self::save_items( self::MENTIONS_OPTION, $mentions, 100 );
+
+				if ( ! empty( $result['meta']['newest_id'] ) ) {
+					$state['mentions_since_id'] = sanitize_text_field( $result['meta']['newest_id'] );
+				}
+				$state['mentions_initialized'] = '1';
+				update_option( self::STATE_OPTION, $state, false );
+
+				if ( ! $initial && ! empty( $new ) && ! empty( $settings['email_notifications'] ) ) {
+					$this->send_mention_email( $new, $settings['notification_email'] );
+				}
+
+				return true;
 			}
-			$id = sanitize_text_field( $item['id'] );
-			$mentions[ $id ] = array(
-				'id'         => $id,
-				'text'       => sanitize_textarea_field( $item['text'] ?? '' ),
-				'author_id'  => sanitize_text_field( $item['author_id'] ?? '' ),
-				'created_at' => sanitize_text_field( $item['created_at'] ?? '' ),
-				'status'     => 'new',
-				'reply_id'   => '',
-			);
-			$new[] = $mentions[ $id ];
-		}
-		self::save_items( self::MENTIONS_OPTION, $mentions, 100 );
-
-		if ( ! empty( $result['meta']['newest_id'] ) ) {
-			$state['mentions_since_id'] = sanitize_text_field( $result['meta']['newest_id'] );
-		}
-		$state['mentions_initialized'] = '1';
-		update_option( self::STATE_OPTION, $state, false );
-
-		if ( ! $initial && ! empty( $new ) && ! empty( $settings['email_notifications'] ) ) {
-			$this->send_mention_email( $new, $settings['notification_email'] );
-		}
-
-		return true;
+		);
 	}
 
 	public function schedule_candidates( $post_id ) {
@@ -98,143 +103,173 @@ final class XAIA_Interaction {
 	}
 
 	public function fetch_candidates( $post_id ) {
-		$settings = XAIA_Settings::get_all();
-		$state    = $this->state();
-		if ( empty( $settings['interaction_enabled'] ) ) {
-			unset( $state['candidate_queued_week'] );
-			update_option( self::STATE_OPTION, $state, false );
-			return;
-		}
+		return XAIA_Lock::run(
+			'candidates',
+			function () use ( $post_id ) {
+				$settings = XAIA_Settings::get_all();
+				$state    = $this->state();
+				if ( empty( $settings['interaction_enabled'] ) ) {
+					unset( $state['candidate_queued_week'] );
+					update_option( self::STATE_OPTION, $state, false );
+					return true;
+				}
 
-		$query = $this->candidate_query( absint( $post_id ) );
-		if ( '' === $query ) {
-			unset( $state['candidate_queued_week'] );
-			update_option( self::STATE_OPTION, $state, false );
-			return;
-		}
+				$query = $this->candidate_query( absint( $post_id ) );
+				if ( '' === $query ) {
+					unset( $state['candidate_queued_week'] );
+					update_option( self::STATE_OPTION, $state, false );
+					return true;
+				}
 
-		$user = $this->authenticated_user( $settings );
-		if ( is_wp_error( $user ) ) {
-			$this->candidate_failed( $state, $post_id, $user->get_error_message() );
-			return;
-		}
-		$result = ( new XAIA_X_Client( $settings ) )->search_recent( $query );
-		if ( is_wp_error( $result ) ) {
-			$this->candidate_failed( $state, $post_id, $result->get_error_message() );
-			return;
-		}
+				$user = $this->authenticated_user( $settings );
+				if ( is_wp_error( $user ) ) {
+					$this->candidate_failed( $state, $post_id, $user->get_error_message() );
+					return $user;
+				}
+				$result = ( new XAIA_X_Client( $settings ) )->search_recent( $query );
+				if ( is_wp_error( $result ) ) {
+					$this->candidate_failed( $state, $post_id, $result->get_error_message() );
+					return $result;
+				}
 
-		$candidates = self::candidates();
-		$added      = 0;
-		foreach ( $result['data'] ?? array() as $item ) {
-			if ( 5 <= $added || empty( $item['id'] ) || ( $item['author_id'] ?? '' ) === $user['id'] ) {
-				continue;
+				$candidates = self::candidates();
+				$added      = 0;
+				foreach ( $result['data'] ?? array() as $item ) {
+					if ( 5 <= $added || empty( $item['id'] ) || ( $item['author_id'] ?? '' ) === $user['id'] ) {
+						continue;
+					}
+					$id = sanitize_text_field( $item['id'] );
+					if ( isset( $candidates[ $id ] ) ) {
+						continue;
+					}
+					$candidates[ $id ] = array(
+						'id'             => $id,
+						'text'           => sanitize_textarea_field( $item['text'] ?? '' ),
+						'author_id'      => sanitize_text_field( $item['author_id'] ?? '' ),
+						'created_at'     => sanitize_text_field( $item['created_at'] ?? '' ),
+						'source_post_id' => absint( $post_id ),
+						'liked'          => false,
+						'followed'       => false,
+						'dismissed'      => false,
+					);
+					++$added;
+				}
+				self::save_items( self::CANDIDATES_OPTION, $candidates, 50 );
+
+				$state['candidate_week'] = wp_date( 'o-W', null, wp_timezone() );
+				unset( $state['candidate_queued_week'] );
+				update_option( self::STATE_OPTION, $state, false );
+				/* translators: %d: 取得した交流候補数。 */
+				XAIA_Logger::add( $post_id, 'info', sprintf( __( '交流候補を%d件取得しました。', 'x-ai-assistant' ), $added ) );
+				return true;
 			}
-			$id = sanitize_text_field( $item['id'] );
-			if ( isset( $candidates[ $id ] ) ) {
-				continue;
-			}
-			$candidates[ $id ] = array(
-				'id'             => $id,
-				'text'           => sanitize_textarea_field( $item['text'] ?? '' ),
-				'author_id'      => sanitize_text_field( $item['author_id'] ?? '' ),
-				'created_at'     => sanitize_text_field( $item['created_at'] ?? '' ),
-				'source_post_id' => absint( $post_id ),
-				'liked'          => false,
-				'followed'       => false,
-				'dismissed'      => false,
-			);
-			++$added;
-		}
-		self::save_items( self::CANDIDATES_OPTION, $candidates, 50 );
-
-		$state['candidate_week'] = wp_date( 'o-W', null, wp_timezone() );
-		unset( $state['candidate_queued_week'] );
-		update_option( self::STATE_OPTION, $state, false );
-		/* translators: %d: 取得した交流候補数。 */
-		XAIA_Logger::add( $post_id, 'info', sprintf( __( '交流候補を%d件取得しました。', 'x-ai-assistant' ), $added ) );
+		);
 	}
 
 	public function like_candidate( $post_id ) {
-		$candidates = self::candidates();
-		if ( empty( $candidates[ $post_id ] ) || ! empty( $candidates[ $post_id ]['liked'] ) ) {
-			return new WP_Error( 'xaia_candidate_missing', __( '対象の候補が見つからないか、すでにいいね済みです。', 'x-ai-assistant' ) );
-		}
+		return XAIA_Lock::run(
+			'candidates',
+			function () use ( $post_id ) {
+				$candidates = self::candidates();
+				if ( empty( $candidates[ $post_id ] ) || ! empty( $candidates[ $post_id ]['liked'] ) ) {
+					return new WP_Error( 'xaia_candidate_missing', __( '対象の候補が見つからないか、すでにいいね済みです。', 'x-ai-assistant' ) );
+				}
 
-		$settings = XAIA_Settings::get_all();
-		$user     = $this->authenticated_user( $settings );
-		if ( is_wp_error( $user ) ) {
-			return $user;
-		}
-		$result = ( new XAIA_X_Client( $settings ) )->like_post( $user['id'], $post_id );
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
+				$settings = XAIA_Settings::get_all();
+				$user     = $this->authenticated_user( $settings );
+				if ( is_wp_error( $user ) ) {
+					return $user;
+				}
+				$result = ( new XAIA_X_Client( $settings ) )->like_post( $user['id'], $post_id );
+				if ( is_wp_error( $result ) ) {
+					return $result;
+				}
 
-		$candidates[ $post_id ]['liked'] = true;
-		self::save_items( self::CANDIDATES_OPTION, $candidates, 50 );
-		return true;
+				$candidates[ $post_id ]['liked'] = true;
+				self::save_items( self::CANDIDATES_OPTION, $candidates, 50 );
+				return true;
+			}
+		);
 	}
 
 	public function follow_candidate( $post_id ) {
-		$candidates = self::candidates();
-		if ( empty( $candidates[ $post_id ] ) || empty( $candidates[ $post_id ]['author_id'] ) || ! empty( $candidates[ $post_id ]['followed'] ) ) {
-			return new WP_Error( 'xaia_candidate_missing', __( '対象の候補が見つからないか、すでにフォロー済みです。', 'x-ai-assistant' ) );
-		}
+		return XAIA_Lock::run(
+			'candidates',
+			function () use ( $post_id ) {
+				$candidates = self::candidates();
+				if ( empty( $candidates[ $post_id ] ) || empty( $candidates[ $post_id ]['author_id'] ) || ! empty( $candidates[ $post_id ]['followed'] ) ) {
+					return new WP_Error( 'xaia_candidate_missing', __( '対象の候補が見つからないか、すでにフォロー済みです。', 'x-ai-assistant' ) );
+				}
 
-		$settings = XAIA_Settings::get_all();
-		$user     = $this->authenticated_user( $settings );
-		if ( is_wp_error( $user ) ) {
-			return $user;
-		}
-		$result = ( new XAIA_X_Client( $settings ) )->follow_user( $user['id'], $candidates[ $post_id ]['author_id'] );
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
+				$settings = XAIA_Settings::get_all();
+				$user     = $this->authenticated_user( $settings );
+				if ( is_wp_error( $user ) ) {
+					return $user;
+				}
+				$result = ( new XAIA_X_Client( $settings ) )->follow_user( $user['id'], $candidates[ $post_id ]['author_id'] );
+				if ( is_wp_error( $result ) ) {
+					return $result;
+				}
 
-		$candidates[ $post_id ]['followed'] = true;
-		self::save_items( self::CANDIDATES_OPTION, $candidates, 50 );
-		return true;
+				$candidates[ $post_id ]['followed'] = true;
+				self::save_items( self::CANDIDATES_OPTION, $candidates, 50 );
+				return true;
+			}
+		);
 	}
 
 	public function reply_mention( $post_id, $text ) {
-		$mentions = self::mentions();
-		$text     = sanitize_textarea_field( $text );
-		if ( empty( $mentions[ $post_id ] ) || 'replied' === ( $mentions[ $post_id ]['status'] ?? '' ) ) {
-			return new WP_Error( 'xaia_mention_missing', __( '対象のメンションが見つからないか、すでに返信済みです。', 'x-ai-assistant' ) );
-		}
-		if ( '' === trim( $text ) ) {
-			return new WP_Error( 'xaia_empty_reply', __( '返信文を入力してください。', 'x-ai-assistant' ) );
-		}
-		if ( preg_match( '#https?://#i', $text ) ) {
-			return new WP_Error( 'xaia_reply_url', __( '月980円以内の予算を守るため、返信文にはURLを含められません。', 'x-ai-assistant' ) );
-		}
+		$text = sanitize_textarea_field( $text );
+		return XAIA_Lock::run(
+			'mentions',
+			function () use ( $post_id, $text ) {
+				$mentions = self::mentions();
+				if ( empty( $mentions[ $post_id ] ) || 'replied' === ( $mentions[ $post_id ]['status'] ?? '' ) ) {
+					return new WP_Error( 'xaia_mention_missing', __( '対象のメンションが見つからないか、すでに返信済みです。', 'x-ai-assistant' ) );
+				}
+				if ( '' === trim( $text ) ) {
+					return new WP_Error( 'xaia_empty_reply', __( '返信文を入力してください。', 'x-ai-assistant' ) );
+				}
+				if ( preg_match( '#https?://#i', $text ) ) {
+					return new WP_Error( 'xaia_reply_url', __( '月980円以内の予算を守るため、返信文にはURLを含められません。', 'x-ai-assistant' ) );
+				}
 
-		$result = ( new XAIA_X_Client( XAIA_Settings::get_all() ) )->create_post( $text, $post_id );
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-		$mentions[ $post_id ]['status']   = 'replied';
-		$mentions[ $post_id ]['reply_id'] = $result['id'];
-		self::save_items( self::MENTIONS_OPTION, $mentions, 100 );
-		XAIA_Logger::add( 0, 'interaction_success', __( 'メンションへ返信しました。', 'x-ai-assistant' ), $result['id'] );
-		return true;
+				$result = ( new XAIA_X_Client( XAIA_Settings::get_all() ) )->create_post( $text, $post_id );
+				if ( is_wp_error( $result ) ) {
+					return $result;
+				}
+				$mentions[ $post_id ]['status']   = 'replied';
+				$mentions[ $post_id ]['reply_id'] = $result['id'];
+				self::save_items( self::MENTIONS_OPTION, $mentions, 100 );
+				XAIA_Logger::add( 0, 'interaction_success', __( 'メンションへ返信しました。', 'x-ai-assistant' ), $result['id'] );
+				return true;
+			}
+		);
 	}
 
 	public function dismiss( $kind, $post_id ) {
-		if ( 'mention' === $kind ) {
-			$items = self::mentions();
-			if ( isset( $items[ $post_id ] ) ) {
-				$items[ $post_id ]['status'] = 'dismissed';
-				self::save_items( self::MENTIONS_OPTION, $items, 100 );
+		$scope = 'mention' === $kind ? 'mentions' : 'candidates';
+		return XAIA_Lock::run(
+			$scope,
+			function () use ( $kind, $post_id ) {
+				if ( 'mention' === $kind ) {
+					$items = self::mentions();
+					if ( isset( $items[ $post_id ] ) ) {
+						$items[ $post_id ]['status'] = 'dismissed';
+						self::save_items( self::MENTIONS_OPTION, $items, 100 );
+					}
+				} elseif ( 'candidate' === $kind ) {
+					$items = self::candidates();
+					if ( isset( $items[ $post_id ] ) ) {
+						$items[ $post_id ]['dismissed'] = true;
+						self::save_items( self::CANDIDATES_OPTION, $items, 50 );
+					}
+				} else {
+					return new WP_Error( 'xaia_invalid_item_kind', __( '不明な交流データです。', 'x-ai-assistant' ) );
+				}
+				return true;
 			}
-		} elseif ( 'candidate' === $kind ) {
-			$items = self::candidates();
-			if ( isset( $items[ $post_id ] ) ) {
-				$items[ $post_id ]['dismissed'] = true;
-				self::save_items( self::CANDIDATES_OPTION, $items, 50 );
-			}
-		}
+		);
 	}
 
 	public static function mentions() {

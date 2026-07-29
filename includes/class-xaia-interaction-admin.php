@@ -35,9 +35,9 @@ final class XAIA_Interaction_Admin {
 			$text   = isset( $_POST['reply_text'] ) ? wp_unslash( $_POST['reply_text'] ) : '';
 			$result = $interaction->reply_mention( $post_id, $text );
 		} elseif ( 'dismiss_mention' === $action ) {
-			$interaction->dismiss( 'mention', $post_id );
+			$result = $interaction->dismiss( 'mention', $post_id );
 		} elseif ( 'dismiss_candidate' === $action ) {
-			$interaction->dismiss( 'candidate', $post_id );
+			$result = $interaction->dismiss( 'candidate', $post_id );
 		} else {
 			$result = new WP_Error( 'xaia_invalid_action', __( '不明な操作です。', 'x-ai-assistant' ) );
 		}
@@ -139,6 +139,18 @@ final class XAIA_Interaction_Admin {
 				}
 			});
 		});
+		document.querySelectorAll('.xaia-protected-form').forEach(function (form) {
+			form.addEventListener('submit', function (event) {
+				if (form.dataset.submitted === '1') {
+					event.preventDefault();
+					return;
+				}
+				form.dataset.submitted = '1';
+				form.querySelectorAll('button, input[type="submit"]').forEach(function (button) {
+					button.disabled = true;
+				});
+			});
+		});
 		</script>
 		<?php
 	}
@@ -153,7 +165,7 @@ final class XAIA_Interaction_Admin {
 		?>
 		<textarea id="<?php echo esc_attr( $id ); ?>" class="large-text" rows="5" readonly><?php echo esc_textarea( $prompt ); ?></textarea>
 		<p><button type="button" class="button xaia-copy-prompt" data-target="<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'ChatGPT用にコピー', 'x-ai-assistant' ); ?></button> <a class="button" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'ChatGPTを開く', 'x-ai-assistant' ); ?></a></p>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+		<form class="xaia-protected-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 			<input type="hidden" name="action" value="xaia_interaction_action">
 			<input type="hidden" name="xaia_do" value="reply">
 			<input type="hidden" name="x_post_id" value="<?php echo esc_attr( $mention['id'] ); ?>">
@@ -172,7 +184,7 @@ final class XAIA_Interaction_Admin {
 			$attributes['onclick'] = "return confirm('" . esc_js( __( 'Xでこの操作を実行しますか？', 'x-ai-assistant' ) ) . "');";
 		}
 		?>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;margin:2px">
+		<form class="xaia-protected-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline-block;margin:2px">
 			<input type="hidden" name="action" value="xaia_interaction_action">
 			<input type="hidden" name="xaia_do" value="<?php echo esc_attr( $action ); ?>">
 			<input type="hidden" name="x_post_id" value="<?php echo esc_attr( $post_id ); ?>">

@@ -13,13 +13,13 @@ jobs:
     name: 配布ZIPの作成
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: プラグインZIPの作成
         run: |
           mkdir -p build/x-ai-assistant
           rsync -rc --exclude-from=.distignore ./ build/x-ai-assistant/
           cd build
           zip -r x-ai-assistant.zip x-ai-assistant
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: build/x-ai-assistant.zip

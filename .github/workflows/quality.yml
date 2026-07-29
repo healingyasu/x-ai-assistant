@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   php:
     name: PHP ${{ matrix.php }} 検査
@@ -12,13 +15,15 @@ jobs:
       matrix:
         php: ['7.4', '8.1', '8.3']
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: shivammathur/setup-php@b604ade2a87db23f8871b7182e69ec5e75effb45 # v2
         with:
           php-version: ${{ matrix.php }}
           coverage: none
       - name: PHP構文検査
         run: find . -name '*.php' -not -path './vendor/*' -print0 | xargs -0 -n1 php -l
+      - name: セキュリティ回帰テスト
+        run: php tests/security-regression.php
       - name: 品質検査ツールのインストール
         if: matrix.php == '8.3'
         run: composer install --no-interaction --prefer-dist

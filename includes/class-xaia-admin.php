@@ -9,6 +9,7 @@ final class XAIA_Admin {
 		add_action( 'admin_menu', array( $this, 'add_menu' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_post_xaia_test_post', array( $this, 'test_post' ) );
+		add_action( 'admin_post_xaia_clear_activity_data', array( $this, 'clear_activity_data' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( XAIA_FILE ), array( $this, 'action_links' ) );
 	}
 
@@ -43,7 +44,12 @@ final class XAIA_Admin {
 				'{categories}' => __( 'テスト', 'x-ai-assistant' ),
 			)
 		);
-		$result = ( new XAIA_X_Client( $settings ) )->create_post( trim( $text ) );
+		$result = XAIA_Lock::run(
+			'test_post',
+			function () use ( $settings, $text ) {
+				return ( new XAIA_X_Client( $settings ) )->create_post( trim( $text ) );
+			}
+		);
 		if ( is_wp_error( $result ) ) {
 			XAIA_Logger::add( 0, 'error', $result->get_error_message() );
 			$notice = 'error';
@@ -57,6 +63,25 @@ final class XAIA_Admin {
 				array(
 					'xaia_notice'       => $notice,
 					'xaia_notice_nonce' => wp_create_nonce( 'xaia_test_notice' ),
+				),
+				admin_url( 'options-general.php?page=x-ai-assistant' )
+			)
+		);
+		exit;
+	}
+
+	public function clear_activity_data() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'この操作を実行する権限がありません。', 'x-ai-assistant' ) );
+		}
+		check_admin_referer( 'xaia_clear_activity_data' );
+
+		$result = XAIA_Maintenance::clear_activity_data();
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'xaia_notice'       => is_wp_error( $result ) ? 'clear_error' : 'cleared',
+					'xaia_notice_nonce' => wp_create_nonce( 'xaia_data_notice' ),
 				),
 				admin_url( 'options-general.php?page=x-ai-assistant' )
 			)
@@ -105,6 +130,8 @@ final class XAIA_Admin {
 					<tr><th scope="row"><?php esc_html_e( 'X交流支援', 'x-ai-assistant' ); ?></th><td><label><input type="checkbox" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[interaction_enabled]" value="1" <?php checked( $settings['interaction_enabled'], '1' ); ?>> <?php esc_html_e( '週1回の交流候補取得と1時間ごとのメンション確認を有効にする', 'x-ai-assistant' ); ?></label></td></tr>
 					<tr><th scope="row"><?php esc_html_e( 'メール通知', 'x-ai-assistant' ); ?></th><td><label><input type="checkbox" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[email_notifications]" value="1" <?php checked( $settings['email_notifications'], '1' ); ?>> <?php esc_html_e( '新しいメンションがある場合だけメールで通知する', 'x-ai-assistant' ); ?></label></td></tr>
 					<tr><th scope="row"><label for="xaia-notification-email"><?php esc_html_e( '通知先メールアドレス', 'x-ai-assistant' ); ?></label></th><td><input class="regular-text" type="email" id="xaia-notification-email" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[notification_email]" value="<?php echo esc_attr( $settings['notification_email'] ); ?>"></td></tr>
+					<tr><th scope="row"><label for="xaia-retention-days"><?php esc_html_e( 'データ保持期間', 'x-ai-assistant' ); ?></label></th><td><input class="small-text" type="number" min="30" max="365" step="1" id="xaia-retention-days" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[retention_days]" value="<?php echo esc_attr( XAIA_Settings::retention_days( $settings['retention_days'] ?? 90 ) ); ?>"> <?php esc_html_e( '日', 'x-ai-assistant' ); ?><p class="description"><?php esc_html_e( '期限を過ぎたメンション、交流候補、投稿ログを1日1回自動削除します（30〜365日）。', 'x-ai-assistant' ); ?></p></td></tr>
+					<tr><th scope="row"><?php esc_html_e( 'アンインストール時', 'x-ai-assistant' ); ?></th><td><label><input type="checkbox" name="<?php echo esc_attr( XAIA_Settings::OPTION_NAME ); ?>[delete_data_on_uninstall]" value="1" <?php checked( $settings['delete_data_on_uninstall'], '1' ); ?>> <?php esc_html_e( 'プラグイン削除時に認証情報を含むすべての保存データを削除する', 'x-ai-assistant' ); ?></label></td></tr>
 					<?php foreach ( $this->credential_labels() as $key => $label ) : ?>
 					<tr>
 						<th scope="row"><label for="xaia-<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
@@ -116,9 +143,17 @@ final class XAIA_Admin {
 				<?php submit_button(); ?>
 			</form>
 
+			<h2><?php esc_html_e( '保存データの消去', 'x-ai-assistant' ); ?></h2>
+			<p><?php esc_html_e( '保存中のメンション、交流候補、認証済みXユーザー情報、投稿ログを消去します。API設定、月間予算、記事のX投稿済み情報は残ります。', 'x-ai-assistant' ); ?></p>
+			<form class="xaia-protected-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="xaia_clear_activity_data">
+				<?php wp_nonce_field( 'xaia_clear_activity_data' ); ?>
+				<?php submit_button( __( '交流データとログを消去', 'x-ai-assistant' ), 'delete', 'submit', false, array( 'onclick' => "return confirm('" . esc_js( __( '交流データと投稿ログを消去しますか？ この操作は元に戻せません。', 'x-ai-assistant' ) ) . "');" ) ); ?>
+			</form>
+
 			<h2><?php esc_html_e( 'テスト投稿', 'x-ai-assistant' ); ?></h2>
 			<p><?php esc_html_e( '保存済みのテンプレートと認証情報を使い、Xへ実際に投稿します。現在の料金では月間API予算を0.20米ドル相当消費します。', 'x-ai-assistant' ); ?></p>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<form class="xaia-protected-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="xaia_test_post">
 				<?php wp_nonce_field( 'xaia_test_post' ); ?>
 				<?php submit_button( __( 'テスト投稿を送信', 'x-ai-assistant' ), 'secondary', 'submit', false, array( 'onclick' => "return confirm('" . esc_js( __( 'Xへ実際にテスト投稿しますか？ 月間API予算を0.20米ドル相当消費します。', 'x-ai-assistant' ) ) . "');" ) ); ?>
@@ -134,6 +169,20 @@ final class XAIA_Admin {
 			<?php endforeach; ?>
 			</tbody></table>
 		</div>
+		<script>
+		document.querySelectorAll('.xaia-protected-form').forEach(function (form) {
+			form.addEventListener('submit', function (event) {
+				if (form.dataset.submitted === '1') {
+					event.preventDefault();
+					return;
+				}
+				form.dataset.submitted = '1';
+				form.querySelectorAll('button, input[type="submit"]').forEach(function (button) {
+					button.disabled = true;
+				});
+			});
+		});
+		</script>
 		<?php
 	}
 
@@ -164,12 +213,20 @@ final class XAIA_Admin {
 		if ( empty( $_GET['xaia_notice'] ) || empty( $_GET['xaia_notice_nonce'] ) ) {
 			return;
 		}
+		$notice       = sanitize_key( wp_unslash( $_GET['xaia_notice'] ) );
 		$notice_nonce = sanitize_text_field( wp_unslash( $_GET['xaia_notice_nonce'] ) );
-		if ( ! wp_verify_nonce( $notice_nonce, 'xaia_test_notice' ) ) {
+		$nonce_action = in_array( $notice, array( 'cleared', 'clear_error' ), true ) ? 'xaia_data_notice' : 'xaia_test_notice';
+		if ( ! wp_verify_nonce( $notice_nonce, $nonce_action ) ) {
 			return;
 		}
-		$success = 'success' === sanitize_key( wp_unslash( $_GET['xaia_notice'] ) );
-		$message = $success ? __( 'テスト投稿に成功しました。', 'x-ai-assistant' ) : __( 'テスト投稿に失敗しました。最近の投稿ログで詳細を確認してください。', 'x-ai-assistant' );
+		$success = in_array( $notice, array( 'success', 'cleared' ), true );
+		if ( 'cleared' === $notice ) {
+			$message = __( '交流データと投稿ログを消去しました。', 'x-ai-assistant' );
+		} elseif ( 'clear_error' === $notice ) {
+			$message = __( '保存データを完全に消去できませんでした。少し待ってから再実行してください。', 'x-ai-assistant' );
+		} else {
+			$message = $success ? __( 'テスト投稿に成功しました。', 'x-ai-assistant' ) : __( 'テスト投稿に失敗しました。最近の投稿ログで詳細を確認してください。', 'x-ai-assistant' );
+		}
 		echo '<div class="notice notice-' . ( $success ? 'success' : 'error' ) . ' is-dismissible"><p>' . esc_html( $message ) . '</p></div>';
 	}
 }

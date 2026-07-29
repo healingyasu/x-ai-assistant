@@ -21,6 +21,7 @@ final class XAIA_Plugin {
 		( new XAIA_Publisher() )->register();
 		( new XAIA_Post_Editor() )->register();
 		( new XAIA_Interaction() )->register();
+		( new XAIA_Maintenance() )->register();
 
 		if ( is_admin() ) {
 			( new XAIA_Admin() )->register();
